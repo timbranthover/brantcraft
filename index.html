@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -46,7 +46,11 @@
             <span id="inventory-mode-readout">2x2 GRID</span>
             <span id="recipe-readout">RECIPE: NONE</span>
           </div>
-          <div class="craft-layout">
+          <div id="craft-notes">
+            <p>Left click moves whole stacks. Right click splits or places one item.</p>
+            <p>Click any ready recipe to auto-load its pattern into the active grid.</p>
+          </div>
+          <div id="craft-layout" class="craft-layout">
             <section class="craft-panel">
               <h3>Craft Grid</h3>
               <div id="craft-grid" class="slot-grid craft-grid"></div>
@@ -60,6 +64,10 @@
               <div id="recipe-list"></div>
             </section>
           </div>
+          <section id="chest-block" class="inventory-block hidden-block">
+            <h3 id="chest-title">Chest</h3>
+            <div id="chest-storage" class="slot-grid chest-grid"></div>
+          </section>
           <section class="inventory-block">
             <h3>Pack</h3>
             <div id="inventory-storage" class="slot-grid storage-grid"></div>
@@ -75,8 +83,8 @@
           <p class="eyebrow">Three.js survival build</p>
           <h1>BrantCraft</h1>
           <p class="body-copy">
-            Punch trees, build a 2x2 inventory recipe, craft a table, then graduate into real tools.
-            This pass pushes the sandbox closer to Minecraft while keeping the CRT-terminal tone.
+            Daylight now carries passive herds, night carries zombies, and every core tool tier is preloaded for testing.
+            The world is still ours stylistically, but the survival loop is pushing closer to Minecraft behavior.
           </p>
           <div class="control-grid">
             <span>Move</span><span>W A S D or Arrows</span>
@@ -84,7 +92,7 @@
             <span>Jump</span><span>Space</span>
             <span>Inventory</span><span>E</span>
             <span>Use / Place</span><span>Right Click</span>
-            <span>Mine</span><span>Hold Left Click</span>
+            <span>Attack / Mine</span><span>Hold Left Click</span>
             <span>Hotbar</span><span>1-9 or Wheel</span>
             <span>Pause</span><span>Esc</span>
             <span>Fullscreen</span><span>F</span>
@@ -97,7 +105,7 @@
           <p class="eyebrow">Cursor released</p>
           <h2>Paused</h2>
           <p class="body-copy">
-            Resume to re-lock the cursor. Inventory lives on E, and crafting tables open by using them in-world.
+            Resume to re-lock the cursor. Inventory lives on E, recipes can be clicked, and crafting tables open by using them in-world.
           </p>
           <button id="resume-btn" type="button">Resume</button>
         </div>
@@ -117,3 +125,5 @@
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
+
+

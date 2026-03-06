@@ -1,4 +1,4 @@
-﻿export const BLOCK = {
+export const BLOCK = {
   AIR: 0,
   GRASS: 1,
   DIRT: 2,
@@ -14,6 +14,8 @@
   IRON_ORE: 12,
   BEDROCK: 13,
   CRAFTING_TABLE: 14,
+  CHEST: 15,
+  TORCH: 16,
 };
 
 const defs = {
@@ -226,6 +228,35 @@ const defs = {
     requiresTool: false,
     textures: { top: "craftingTop", bottom: "planks", side: "craftingSide", front: "craftingFront", back: "craftingSide", left: "craftingSide", right: "craftingFront" },
     tint: 0xffffff,
+  },
+  [BLOCK.CHEST]: {
+    id: BLOCK.CHEST,
+    name: "Chest",
+    solid: true,
+    mineable: true,
+    placeable: true,
+    renderLayer: "opaque",
+    breakTime: 2.4,
+    preferredTool: "axe",
+    harvestLevel: 0,
+    requiresTool: false,
+    textures: { top: "chestTop", bottom: "planks", side: "chestSide", front: "chestFront", back: "chestSide", left: "chestSide", right: "chestSide" },
+    tint: 0xffffff,
+  },
+  [BLOCK.TORCH]: {
+    id: BLOCK.TORCH,
+    name: "Torch",
+    solid: false,
+    mineable: true,
+    placeable: true,
+    renderLayer: "cutout",
+    breakTime: 0.1,
+    preferredTool: null,
+    harvestLevel: 0,
+    requiresTool: false,
+    textures: { all: "torch" },
+    tint: 0xfff0c4,
+    lightLevel: 14,
   },
 };
 

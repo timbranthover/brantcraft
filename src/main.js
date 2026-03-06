@@ -34,6 +34,8 @@ import {
   getMaxStackSize,
   getRecipeForGrid,
   getToolMiningSpeed,
+  ALL_TOOL_ITEM_IDS,
+  DEBUG_LOADOUT,
   HOTBAR_SIZE,
   INVENTORY_SIZE,
   isPlaceableItem,
@@ -44,6 +46,7 @@ import {
 } from "./items.js";
 import { createSoundSystem } from "./sound.js";
 import { createAtlasTexture } from "./textures.js";
+import { createMobSystem } from "./mobs.js";
 import { VoxelWorld } from "./world.js";
 
 const canvas = document.querySelector("#game");
@@ -72,15 +75,38 @@ const oxygenBand = document.querySelector("#oxygen-band");
 const inventoryTitle = document.querySelector("#inventory-title");
 const inventoryModeReadout = document.querySelector("#inventory-mode-readout");
 const recipeReadout = document.querySelector("#recipe-readout");
+const craftLayout = document.querySelector("#craft-layout");
 const craftGrid = document.querySelector("#craft-grid");
 const craftResult = document.querySelector("#craft-result");
 const recipeList = document.querySelector("#recipe-list");
+const chestBlock = document.querySelector("#chest-block");
+const chestTitle = document.querySelector("#chest-title");
+const chestStorage = document.querySelector("#chest-storage");
 const inventoryStorage = document.querySelector("#inventory-storage");
 const inventoryHotbar = document.querySelector("#inventory-hotbar");
 const cursorStackEl = document.querySelector("#cursor-stack");
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const wrap = (value, length) => ((value % length) + length) % length;
+
+function chestKey(x, y, z) {
+  return `${x},${y},${z}`;
+}
+
+function createEmptySlots(length) {
+  return Array.from({ length }, () => null);
+}
+
+function normalizeSlotArray(raw, length) {
+  const slots = createEmptySlots(length);
+  if (!Array.isArray(raw)) {
+    return slots;
+  }
+  for (let index = 0; index < Math.min(length, raw.length); index += 1) {
+    slots[index] = normalizeStack(raw[index]);
+  }
+  return slots;
+}
 
 function loadSave() {
   try {
@@ -163,7 +189,7 @@ function initializeInventory(savedInventory) {
     for (let index = 0; index < Math.min(savedInventory.length, INVENTORY_SIZE); index += 1) {
       slots[index] = normalizeStack(savedInventory[index]);
     }
-    return slots;
+    return ensureDebugLoadout(slots);
   }
 
   if (savedInventory && typeof savedInventory === "object") {
@@ -174,13 +200,37 @@ function initializeInventory(savedInventory) {
       }
       insertStackIntoSlots(slots, createInventoryStack(itemId, Number(rawCount) || 0));
     }
-    return slots;
+    return ensureDebugLoadout(slots);
   }
 
   for (const stack of STARTER_INVENTORY) {
     insertStackIntoSlots(slots, cloneStack(stack));
   }
-  return slots;
+  return ensureDebugLoadout(slots);
+}
+
+function ensureDebugLoadout(slots) {
+  const rebuilt = Array.from({ length: INVENTORY_SIZE }, () => null);
+  const preserved = slots.filter((slot) => slot && !ALL_TOOL_ITEM_IDS.includes(slot.itemId));
+
+  ALL_TOOL_ITEM_IDS.forEach((itemId, index) => {
+    if (index < INVENTORY_SIZE) {
+      rebuilt[index] = createInventoryStack(itemId, 1);
+    }
+  });
+
+  preserved.forEach((stack) => {
+    insertStackIntoSlots(rebuilt, cloneStack(stack));
+  });
+
+  for (const desired of DEBUG_LOADOUT.filter((stack) => !ALL_TOOL_ITEM_IDS.includes(stack.itemId))) {
+    const current = rebuilt.reduce((sum, slot) => sum + (slot?.itemId === desired.itemId ? slot.count : 0), 0);
+    if (current < desired.count) {
+      insertStackIntoSlots(rebuilt, createInventoryStack(desired.itemId, desired.count - current));
+    }
+  }
+
+  return rebuilt;
 }
 
 const savedState = loadSave();
@@ -192,7 +242,7 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: "high-performance",
   alpha: false,
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.autoClear = false;
@@ -200,7 +250,7 @@ renderer.autoClear = false;
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x9dd0ff, 28, 130);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 260);
+const camera = new THREE.PerspectiveCamera(84, window.innerWidth / window.innerHeight, 0.1, 260);
 camera.rotation.order = "YXZ";
 
 const atlas = createAtlasTexture();
@@ -224,7 +274,7 @@ const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(2.6, 18, 12), new THREE
 scene.add(moonMesh);
 
 const viewScene = new THREE.Scene();
-const viewCamera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.01, 10);
+const viewCamera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.01, 10);
 viewScene.add(viewCamera);
 viewScene.add(new THREE.AmbientLight(0xffffff, 1.2));
 const viewSun = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -233,16 +283,16 @@ viewScene.add(viewSun);
 
 const viewModel = new THREE.Group();
 viewCamera.add(viewModel);
-viewModel.position.set(0.72, -0.62, -1.15);
+viewModel.position.set(0.64, -0.48, -1.08);
 const armMesh = new THREE.Mesh(
-  new THREE.BoxGeometry(0.36, 0.62, 0.34),
+  new THREE.BoxGeometry(0.22, 0.42, 0.22),
   new THREE.MeshStandardMaterial({ color: 0xd6b397, roughness: 1 }),
 );
-armMesh.position.set(0, -0.08, 0);
-armMesh.rotation.set(-0.12, 0.08, 0.24);
+armMesh.position.set(0, -0.04, 0);
+armMesh.rotation.set(-0.08, 0.06, 0.16);
 viewModel.add(armMesh);
 const heldAnchor = new THREE.Group();
-heldAnchor.position.set(-0.1, 0.12, -0.2);
+heldAnchor.position.set(-0.04, 0.08, -0.08);
 viewModel.add(heldAnchor);
 let heldMesh = null;
 
@@ -270,6 +320,13 @@ function createClouds(seed) {
 const clouds = createClouds(WORLD_SEED);
 scene.add(clouds);
 
+const torchLights = Array.from({ length: 6 }, () => {
+  const light = new THREE.PointLight(0xffc36a, 0, 12, 2.2);
+  light.visible = false;
+  scene.add(light);
+  return light;
+});
+
 const saveState = { dirty: false, countdown: 0, pulseUntil: 0 };
 function queueSave() {
   saveState.dirty = true;
@@ -283,6 +340,7 @@ const world = new VoxelWorld({
   savedChanges: savedState?.changes ?? null,
   onWorldMutated: queueSave,
 });
+const mobSystem = createMobSystem({ scene, world });
 
 const spawnPoint = world.findSpawnPoint();
 const initialPlayer = savedState?.player ?? {};
@@ -316,6 +374,9 @@ const state = {
   inventory: initializeInventory(savedState?.inventory),
   inventoryCraft: Array.from({ length: 4 }, () => null),
   tableCraft: Array.from({ length: 9 }, () => null),
+  openChestKey: null,
+  chestTitle: "Chest",
+  chests: new Map(),
   cursorStack: null,
   damageFlash: 0,
   handSwing: 0,
@@ -323,8 +384,49 @@ const state = {
   pointerY: 0,
   drops: [],
   nextDropId: 1,
+  daylight: 1,
+  mobSwingCooldown: 0,
 };
 
+initializeChestState();
+
+
+function serializeChestMap() {
+  return Object.fromEntries(Array.from(state.chests.entries()));
+}
+
+function createSurpriseChestLoot(index) {
+  const variants = [
+    [createInventoryStack(ITEM.DIAMOND, 3), createInventoryStack(ITEM.GOLD_INGOT, 8), createInventoryStack(ITEM.TORCH, 12)],
+    [createInventoryStack(ITEM.IRON_INGOT, 12), createInventoryStack(ITEM.CHEST, 1), createInventoryStack(ITEM.TORCH, 16)],
+    [createInventoryStack(ITEM.STONE_SWORD, 1), createInventoryStack(ITEM.OAK_LOG, 10), createInventoryStack(ITEM.COBBLESTONE, 16)],
+  ];
+  const slots = createEmptySlots(27);
+  variants[index % variants.length].forEach((stack, slotIndex) => {
+    slots[slotIndex * 3] = stack;
+  });
+  return slots;
+}
+
+function initializeChestState() {
+  const savedChests = savedState?.chests ?? {};
+  const presetChests = world.getPresetChests?.() ?? [];
+  presetChests.forEach((entry) => {
+    const key = chestKey(entry.x, entry.y, entry.z);
+    const savedSlots = savedChests[key];
+    state.chests.set(key, normalizeSlotArray(savedSlots ?? createSurpriseChestLoot(entry.index), 27));
+  });
+
+  Object.entries(savedChests).forEach(([key, rawSlots]) => {
+    if (!state.chests.has(key)) {
+      state.chests.set(key, normalizeSlotArray(rawSlots, 27));
+    }
+  });
+}
+
+function getOpenChestSlots() {
+  return state.openChestKey ? state.chests.get(state.openChestKey) ?? null : null;
+}
 const keys = new Set();
 let jumpQueued = false;
 const pointer = { left: false };
@@ -344,7 +446,10 @@ targetMarker.visible = false;
 scene.add(targetMarker);
 
 let currentTarget = null;
-const mining = { key: "", progress: 0, duration: 0 };function runBrowserAction(action) {
+let currentMobTarget = null;
+const mining = { key: "", progress: 0, duration: 0 };
+
+function runBrowserAction(action) {
   try {
     const result = action?.();
     if (result && typeof result.catch === "function") {
@@ -371,6 +476,20 @@ function getSelectedToolDefinition() {
   const stack = getSelectedStack();
   const def = stack ? getItemDefinition(stack.itemId) : null;
   return def?.category === "tool" ? def : null;
+}
+
+function getSelectedAttackDamage() {
+  const tool = getSelectedToolDefinition();
+  if (!tool) {
+    return 2;
+  }
+  if (tool.toolType === "sword") {
+    return tool.attackDamage ?? 5;
+  }
+  if (tool.toolType === "axe") {
+    return Math.max(4, tool.attackDamage ?? 4);
+  }
+  return Math.max(2, (tool.attackDamage ?? 3) * 0.7);
 }
 
 function addStackToInventory(stack, shouldQueue = true) {
@@ -452,6 +571,7 @@ function openInventory(mode = "inventory") {
   if (state.mode !== "playing") {
     return;
   }
+  state.openChestKey = mode === "chest" ? state.openChestKey : null;
   state.mode = mode;
   app.dataset.mode = mode;
   menu.classList.remove("visible");
@@ -463,11 +583,23 @@ function openInventory(mode = "inventory") {
   renderAllInventoryViews();
 }
 
-function closeInventory() {
-  if (state.mode !== "inventory" && state.mode !== "table") {
+function openChest(key, title = "Chest") {
+  if (state.mode !== "playing") {
     return;
   }
-  clearCraftGridToInventory(getActiveCraftGrid());
+  state.openChestKey = key;
+  state.chestTitle = title;
+  openInventory("chest");
+}
+
+function closeInventory() {
+  if (!["inventory", "table", "chest"].includes(state.mode)) {
+    return;
+  }
+  if (state.mode === "inventory" || state.mode === "table" || state.mode === "chest") {
+    clearCraftGridToInventory(getActiveCraftGrid());
+  }
+  state.openChestKey = null;
   setMode("playing");
   requestPointerLock();
 }
@@ -477,7 +609,7 @@ function setMode(mode) {
   app.dataset.mode = mode;
   menu.classList.toggle("visible", mode === "menu");
   pausePanel.classList.toggle("visible", mode === "paused");
-  inventoryPanel.classList.toggle("visible", mode === "inventory" || mode === "table");
+  inventoryPanel.classList.toggle("visible", mode === "inventory" || mode === "table" || mode === "chest");
   deathPanel.classList.toggle("visible", mode === "dead");
 
   if (mode !== "playing") {
@@ -517,6 +649,7 @@ function saveGame() {
       selectedIndex: state.selectedIndex,
       timeOfDay: Number(state.timeOfDay.toFixed(5)),
       inventory: state.inventory,
+      chests: serializeChestMap(),
       changes: world.serializeChanges(),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
@@ -574,6 +707,63 @@ function createSlotElement(type, index, showNumber = false) {
   return button;
 }
 
+function getToolColors(material) {
+  const palettes = {
+    wood: { head: 0xc89b63, shade: 0x8b6238 },
+    stone: { head: 0xa7b1ba, shade: 0x6d7680 },
+    iron: { head: 0xe1d7cc, shade: 0x9f988f },
+    golden: { head: 0xf1cc56, shade: 0xb8891e },
+    diamond: { head: 0x67dde0, shade: 0x2496a0 },
+  };
+  return palettes[material] ?? palettes.wood;
+}
+
+function createHeldToolMesh(def) {
+  const group = new THREE.Group();
+  const colors = getToolColors(def.material);
+  const handleMat = new THREE.MeshStandardMaterial({ color: 0x9a6d3b, roughness: 1 });
+  const headMat = new THREE.MeshStandardMaterial({ color: colors.head, roughness: 0.95 });
+  const shadeMat = new THREE.MeshStandardMaterial({ color: colors.shade, roughness: 1 });
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.34, 0.05), handleMat);
+  handle.position.set(0, -0.02, 0);
+  group.add(handle);
+
+  if (def.toolType === "sword") {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.34, 0.03), headMat);
+    blade.position.set(0, 0.17, 0);
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.04), shadeMat);
+    guard.position.set(0, 0, 0);
+    group.add(blade, guard);
+  } else if (def.toolType === "pickaxe") {
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 0.04), headMat);
+    head.position.set(0, 0.14, 0);
+    const tips = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.03, 0.03), shadeMat);
+    tips.position.set(0, 0.09, 0);
+    group.add(head, tips);
+  } else if (def.toolType === "axe") {
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.04), headMat);
+    head.position.set(-0.05, 0.12, 0);
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.18, 0.04), shadeMat);
+    edge.position.set(0.03, 0.1, 0);
+    group.add(head, edge);
+  } else if (def.toolType === "shovel") {
+    const scoop = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.04), headMat);
+    scoop.position.set(0, 0.12, 0);
+    group.add(scoop);
+  } else if (def.toolType === "hoe") {
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.04), headMat);
+    head.position.set(-0.02, 0.15, 0);
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.04), shadeMat);
+    tip.position.set(0.06, 0.1, 0);
+    group.add(head, tip);
+  }
+
+  group.scale.setScalar(0.88);
+  group.rotation.set(0.3, 0.7, 0.25);
+  group.userData.baseRotationZ = 0.25;
+  return group;
+}
+
 function updateHeldMesh() {
   if (heldMesh) {
     heldAnchor.remove(heldMesh);
@@ -583,10 +773,16 @@ function updateHeldMesh() {
   if (!stack) {
     return;
   }
-  const material = new THREE.MeshBasicMaterial({ map: getItemTexture(stack.itemId, atlas), transparent: true, alphaTest: 0.1, side: THREE.DoubleSide });
-  heldMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.56), material);
-  heldMesh.position.set(-0.02, 0.04, -0.12);
-  heldMesh.rotation.set(0.3, 0.8, 0.18);
+  const def = getItemDefinition(stack.itemId);
+  if (def?.category === "tool") {
+    heldMesh = createHeldToolMesh(def);
+  } else {
+    const material = new THREE.MeshBasicMaterial({ map: getItemTexture(stack.itemId, atlas), transparent: true, alphaTest: 0.1, side: THREE.DoubleSide });
+    heldMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), material);
+    heldMesh.position.set(0, 0.04, -0.08);
+    heldMesh.rotation.set(0.2, 0.78, 0.12);
+    heldMesh.userData.baseRotationZ = 0.12;
+  }
   heldAnchor.add(heldMesh);
 }
 
@@ -597,6 +793,16 @@ const hudHotbarSlots = Array.from({ length: HOTBAR_SIZE }, (_, index) => {
   return slot;
 });
 
+const chestSlots = Array.from({ length: 27 }, (_, index) => {
+  const slot = createSlotElement("inventory", index, false);
+  slot.addEventListener("click", () => handleChestSlotPrimary(index));
+  slot.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    handleChestSlotSecondary(index);
+  });
+  chestStorage.appendChild(slot);
+  return slot;
+});
 const storageSlots = [];
 for (let index = HOTBAR_SIZE; index < INVENTORY_SIZE; index += 1) {
   const slot = createSlotElement("inventory", index, false);
@@ -638,6 +844,13 @@ resultSlot.addEventListener("contextmenu", (event) => {
   handleCraftResultPrimary();
 });
 craftResult.appendChild(resultSlot);
+recipeList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-recipe-id]");
+  if (!button) {
+    return;
+  }
+  autofillRecipe(button.dataset.recipeId);
+});
 function renderSlot(button, stack, options = {}) {
   const { active = false, disabled = false } = options;
   const icon = button.querySelector(".slot-icon");
@@ -678,25 +891,82 @@ function updateCursorStackVisual() {
   cursorStackEl.appendChild(slot);
 }
 
+function getRecipeRequirements(recipe) {
+  const required = {};
+  const ids = recipe.shapeless ? recipe.inputs : recipe.pattern.flat().filter(Boolean);
+  ids.forEach((itemId) => {
+    required[itemId] = (required[itemId] ?? 0) + 1;
+  });
+  return required;
+}
+
 function updateRecipeList() {
   const station = getActiveStation();
   const recipes = RECIPES.filter((recipe) => recipe.station === station);
   recipeList.innerHTML = recipes.map((recipe) => {
     const needs = recipe.shapeless ? recipe.inputs.join(" + ") : recipe.pattern.flat().filter(Boolean).join(" + ");
-    const required = {};
-    const ids = recipe.shapeless ? recipe.inputs : recipe.pattern.flat().filter(Boolean);
-    ids.forEach((itemId) => {
-      required[itemId] = (required[itemId] ?? 0) + 1;
-    });
-    const ready = Object.entries(required).every(([itemId, count]) => countItemInInventory(itemId) >= count);
-    return `<div class="recipe-chip ${ready ? "ready" : ""}">${getItemName(recipe.output.itemId)} :: ${needs}</div>`;
+    const ready = Object.entries(getRecipeRequirements(recipe)).every(([itemId, count]) => countItemInInventory(itemId) >= count);
+    return `<button type="button" class="recipe-chip ${ready ? "ready" : ""}" data-recipe-id="${recipe.id}">${getItemName(recipe.output.itemId)} <span>${needs}</span></button>`;
   }).join("");
+}
+
+function removeSingleItemFromInventory(itemId) {
+  for (let index = 0; index < state.inventory.length; index += 1) {
+    const slot = state.inventory[index];
+    if (!slot || slot.itemId !== itemId) {
+      continue;
+    }
+    slot.count -= 1;
+    if (slot.count <= 0) {
+      state.inventory[index] = null;
+    }
+    return true;
+  }
+  return false;
+}
+
+function autofillRecipe(recipeId) {
+  const recipe = RECIPES.find((entry) => entry.id === recipeId && entry.station === getActiveStation());
+  if (!recipe) {
+    return;
+  }
+  const requirements = getRecipeRequirements(recipe);
+  const ready = Object.entries(requirements).every(([itemId, count]) => countItemInInventory(itemId) >= count);
+  if (!ready) {
+    return;
+  }
+  const grid = getActiveCraftGrid();
+  clearCraftGridToInventory(grid);
+  if (recipe.shapeless) {
+    recipe.inputs.forEach((itemId, index) => {
+      if (removeSingleItemFromInventory(itemId)) {
+        grid[index] = createInventoryStack(itemId, 1);
+      }
+    });
+  } else {
+    const width = getActiveStation() === "table" ? 3 : 2;
+    recipe.pattern.forEach((row, y) => {
+      row.forEach((itemId, x) => {
+        if (!itemId) {
+          return;
+        }
+        if (removeSingleItemFromInventory(itemId)) {
+          grid[y * width + x] = createInventoryStack(itemId, 1);
+        }
+      });
+    });
+  }
+  renderAllInventoryViews();
+  queueSave();
 }
 
 function renderAllInventoryViews() {
   hudHotbarSlots.forEach((slot, index) => renderSlot(slot, state.inventory[index], { active: index === state.selectedIndex }));
   inventoryHotbarSlots.forEach((slot, index) => renderSlot(slot, state.inventory[index], { active: index === state.selectedIndex }));
   storageSlots.forEach((slot, index) => renderSlot(slot, state.inventory[index + HOTBAR_SIZE]));
+
+  const chestSlotsData = getOpenChestSlots();
+  chestSlots.forEach((slot, index) => renderSlot(slot, chestSlotsData?.[index] ?? null, { disabled: state.mode !== "chest" }));
 
   craftSlots.forEach((slot, displayIndex) => {
     const binding = getCraftSlotBinding(displayIndex);
@@ -705,10 +975,13 @@ function renderAllInventoryViews() {
   });
 
   const recipe = getCurrentRecipe();
-  renderSlot(resultSlot, recipe ? createInventoryStack(recipe.output.itemId, recipe.output.count) : null, { disabled: !recipe });
-  inventoryTitle.textContent = state.mode === "table" ? "Crafting Table" : "Inventory";
-  inventoryModeReadout.textContent = state.mode === "table" ? "3x3 TABLE GRID" : "2x2 PACK GRID";
-  recipeReadout.textContent = recipe ? `RECIPE: ${getItemName(recipe.output.itemId)} x${recipe.output.count}` : "RECIPE: NONE";
+  renderSlot(resultSlot, recipe ? createInventoryStack(recipe.output.itemId, recipe.output.count) : null, { disabled: !recipe || state.mode === "chest" });
+  inventoryTitle.textContent = state.mode === "table" ? "Crafting Table" : state.mode === "chest" ? state.chestTitle : "Inventory";
+  inventoryModeReadout.textContent = state.mode === "table" ? "3x3 TABLE GRID" : state.mode === "chest" ? "27 SLOT CACHE" : "2x2 PACK GRID";
+  recipeReadout.textContent = state.mode === "chest" ? "CHEST: SHIFTLESS TRANSFER" : recipe ? `RECIPE: ${getItemName(recipe.output.itemId)} x${recipe.output.count}` : "RECIPE: NONE";
+  craftLayout.classList.toggle("hidden-block", state.mode === "chest");
+  chestBlock.classList.toggle("hidden-block", state.mode !== "chest");
+  chestTitle.textContent = state.chestTitle;
   updateRecipeList();
   updateCursorStackVisual();
 }
@@ -768,6 +1041,70 @@ function handleInventorySlotSecondary(index) {
   }
   renderAllInventoryViews();
   updateHeldMesh();
+  queueSave();
+}
+
+function handleChestSlotPrimary(index) {
+  const slots = getOpenChestSlots();
+  if (!slots || state.mode !== "chest") {
+    return;
+  }
+  const slot = slots[index];
+  if (!state.cursorStack) {
+    if (slot) {
+      state.cursorStack = slot;
+      slots[index] = null;
+    }
+  } else if (!slot) {
+    slots[index] = state.cursorStack;
+    state.cursorStack = null;
+  } else if (canStacksMerge(slot, state.cursorStack)) {
+    const transfer = Math.min(getMaxStackSize(slot.itemId) - slot.count, state.cursorStack.count);
+    if (transfer > 0) {
+      slot.count += transfer;
+      state.cursorStack.count -= transfer;
+      if (state.cursorStack.count <= 0) {
+        state.cursorStack = null;
+      }
+    }
+  } else {
+    slots[index] = state.cursorStack;
+    state.cursorStack = slot;
+  }
+  renderAllInventoryViews();
+  queueSave();
+}
+
+function handleChestSlotSecondary(index) {
+  const slots = getOpenChestSlots();
+  if (!slots || state.mode !== "chest") {
+    return;
+  }
+  const slot = slots[index];
+  if (!state.cursorStack) {
+    if (!slot) {
+      return;
+    }
+    const takeCount = Math.ceil(slot.count / 2);
+    state.cursorStack = { ...slot, count: takeCount };
+    slot.count -= takeCount;
+    if (slot.count <= 0) {
+      slots[index] = null;
+    }
+  } else if (!slot) {
+    slots[index] = { ...state.cursorStack, count: 1 };
+    state.cursorStack.count -= 1;
+    if (state.cursorStack.count <= 0) {
+      state.cursorStack = null;
+    }
+  } else if (canStacksMerge(slot, state.cursorStack) && slot.count < getMaxStackSize(slot.itemId)) {
+    slot.count += 1;
+    state.cursorStack.count -= 1;
+    if (state.cursorStack.count <= 0) {
+      state.cursorStack = null;
+    }
+  }
+  renderAllInventoryViews();
   queueSave();
 }
 
@@ -891,12 +1228,18 @@ function handleCraftResultPrimary() {
 
 function createBandIcons(container, type, filledCount, totalCount, hidden = false) {
   container.classList.toggle("hidden", hidden);
-  container.innerHTML = "";
-  for (let index = 0; index < totalCount; index += 1) {
-    const icon = document.createElement("span");
-    icon.className = `band-icon ${type} ${index < filledCount ? "filled" : ""}`;
-    container.appendChild(icon);
+  if (container.children.length !== totalCount || container.dataset.iconType !== type) {
+    container.innerHTML = "";
+    container.dataset.iconType = type;
+    for (let index = 0; index < totalCount; index += 1) {
+      const icon = document.createElement("span");
+      icon.className = `band-icon ${type}`;
+      container.appendChild(icon);
+    }
   }
+  Array.from(container.children).forEach((icon, index) => {
+    icon.classList.toggle("filled", index < filledCount);
+  });
 }
 
 function getPlayerAabb(position = player.position) {
@@ -1061,6 +1404,12 @@ function tryUseOrPlaceBlock() {
     state.handSwing = 1;
     return;
   }
+  if (currentTarget.blockId === BLOCK.CHEST) {
+    const key = chestKey(currentTarget.x, currentTarget.y, currentTarget.z);
+    openChest(key, presetChestKeys.has(key) ? "Surprise Chest" : "Oak Chest");
+    state.handSwing = 1;
+    return;
+  }
   const selected = getSelectedStack();
   const itemDef = selected ? getItemDefinition(selected.itemId) : null;
   if (!selected || !itemDef || !Number.isInteger(itemDef.placeableBlockId)) {
@@ -1073,7 +1422,16 @@ function tryUseOrPlaceBlock() {
   if (!world.isInside(placeX, placeY, placeZ) || (occupant !== BLOCK.AIR && occupant !== BLOCK.WATER) || blockIntersectsPlayer(placeX, placeY, placeZ)) {
     return;
   }
+  if (itemDef.placeableBlockId === BLOCK.TORCH) {
+    const supportBlock = world.getBlock(placeX, placeY - 1, placeZ);
+    if (supportBlock === BLOCK.AIR || supportBlock === BLOCK.WATER) {
+      return;
+    }
+  }
   if (world.setBlock(placeX, placeY, placeZ, itemDef.placeableBlockId)) {
+    if (itemDef.placeableBlockId === BLOCK.CHEST) {
+      state.chests.set(chestKey(placeX, placeY, placeZ), createEmptySlots(27));
+    }
     selected.count -= 1;
     if (selected.count <= 0) {
       state.inventory[state.selectedIndex] = null;
@@ -1099,6 +1457,7 @@ function updateLighting(dt) {
   const sunAngle = state.timeOfDay * Math.PI * 2 - Math.PI / 2;
   const elevation = Math.sin(sunAngle);
   const daylight = clamp((elevation + 0.22) / 1.18, 0, 1);
+  state.daylight = daylight;
   const sunrise = Math.max(0, 1 - Math.abs(elevation) * 4);
   const skyColor = new THREE.Color().lerpColors(nightSky, daySky, daylight).lerp(sunriseTint, sunrise * 0.14);
   const fogColor = new THREE.Color().lerpColors(nightFog, dayFog, daylight).lerp(sunriseTint, sunrise * 0.1);
@@ -1125,6 +1484,20 @@ function updateLighting(dt) {
     const drift = wrap(cloud.userData.baseX + state.elapsed * cloud.userData.speed, span * 2) - span;
     cloud.position.set(drift, cloud.userData.height, cloud.userData.baseZ);
   }
+}
+
+function updateTorchLights() {
+  const nearbyTorches = world.getNearbyTorches(player.position, 12);
+  torchLights.forEach((light, index) => {
+    const torch = nearbyTorches[index];
+    if (!torch) {
+      light.visible = false;
+      return;
+    }
+    light.visible = true;
+    light.intensity = 0.85;
+    light.position.set(torch.x, torch.y, torch.z);
+  });
 }
 
 function updatePlayer(dt) {
@@ -1244,9 +1617,12 @@ function updatePlayer(dt) {
   const bobOffset = player.grounded ? Math.sin(player.bobPhase) * bobAmount : 0;
   camera.position.set(player.position.x, player.position.y + PLAYER_EYE_HEIGHT + bobOffset, player.position.z);
   camera.rotation.set(player.pitch, player.yaw, 0);
-  const targetFov = sprinting ? 81 : 75;
-  camera.fov += (targetFov - camera.fov) * 0.12;
-  camera.updateProjectionMatrix();
+  const targetFov = sprinting ? 90 : 84;
+  const nextFov = camera.fov + (targetFov - camera.fov) * 0.12;
+  if (Math.abs(nextFov - camera.fov) > 0.02) {
+    camera.fov = nextFov;
+    camera.updateProjectionMatrix();
+  }
 }
 
 function updateDrops(dt) {
@@ -1276,9 +1652,14 @@ function updateDrops(dt) {
 }
 
 function updateInteraction(dt) {
+  state.mobSwingCooldown = Math.max(0, state.mobSwingCooldown - dt);
   camera.getWorldDirection(lookDirection);
   currentTarget = world.raycast(camera.position, lookDirection, MAX_INTERACT_DISTANCE);
-  if (currentTarget) {
+  const mobCandidate = mobSystem.getMobTarget(camera.position, lookDirection, MAX_INTERACT_DISTANCE);
+  const blockDistance = currentTarget?.distance ?? Number.POSITIVE_INFINITY;
+  currentMobTarget = mobCandidate && mobCandidate.distance <= blockDistance + 0.15 ? mobCandidate.mob : null;
+
+  if (currentTarget && !currentMobTarget) {
     targetMarker.visible = true;
     targetMarker.position.set(currentTarget.x + 0.5, currentTarget.y + 0.5, currentTarget.z + 0.5);
     targetMarker.material.color.set(getBlockDefinition(currentTarget.blockId).mineable ? 0xffffff : 0xff7766);
@@ -1287,6 +1668,19 @@ function updateInteraction(dt) {
     mining.key = "";
     mining.progress = 0;
   }
+
+  if (pointer.left && currentMobTarget && state.mode === "playing" && state.mobSwingCooldown <= 0) {
+    mobSystem.damageMob(currentMobTarget, getSelectedAttackDamage(), spawnDrop);
+    const toolDef = getSelectedToolDefinition();
+    if (toolDef) {
+      damageHeldTool(1);
+    }
+    state.handSwing = 1;
+    state.mobSwingCooldown = toolDef?.toolType === "sword" ? 0.34 : 0.5;
+    sfx.mine();
+    return;
+  }
+
   if (pointer.left && currentTarget && state.mode === "playing" && getBlockDefinition(currentTarget.blockId).mineable) {
     const key = `${currentTarget.x},${currentTarget.y},${currentTarget.z}`;
     const duration = getBreakDuration(currentTarget.blockId);
@@ -1301,6 +1695,16 @@ function updateInteraction(dt) {
       const toolDef = getSelectedToolDefinition();
       const canHarvest = canHarvestBlock(currentTarget.blockId, toolDef);
       const dropItemId = getDropItemForBlock(currentTarget.blockId);
+      if (currentTarget.blockId === BLOCK.CHEST) {
+        const key = chestKey(currentTarget.x, currentTarget.y, currentTarget.z);
+        const chestSlotsData = state.chests.get(key) ?? [];
+        chestSlotsData.forEach((stack) => {
+          if (stack) {
+            spawnDrop(stack.itemId, currentTarget.x + 0.5, currentTarget.y + 0.45, currentTarget.z + 0.5, stack.count, stack.durability);
+          }
+        });
+        state.chests.delete(key);
+      }
       world.setBlock(currentTarget.x, currentTarget.y, currentTarget.z, BLOCK.AIR);
       if (canHarvest && dropItemId) {
         spawnDrop(dropItemId, currentTarget.x + 0.5, currentTarget.y + 0.2, currentTarget.z + 0.5);
@@ -1335,13 +1739,23 @@ function updateHud() {
   timeReadout.textContent = getTimeLabel(state.timeOfDay);
   const heldStack = getSelectedStack();
   heldReadout.textContent = heldStack ? `${getItemName(heldStack.itemId).toUpperCase()} ${heldStack.count > 1 ? `x${heldStack.count}` : ""}` : "HAND EMPTY";
-  targetReadout.textContent = currentTarget ? `TARGET ${BLOCK_TYPES[currentTarget.blockId].name.toUpperCase()}` : "TARGET NONE";
+  targetReadout.textContent = currentMobTarget
+    ? `TARGET ${currentMobTarget.def.label.toUpperCase()}`
+    : currentTarget
+      ? `TARGET ${BLOCK_TYPES[currentTarget.blockId].name.toUpperCase()}`
+      : "TARGET NONE";
   if (state.mode === "dead") {
     tooltipLabel.textContent = "Respawn to get back into the world.";
   } else if (state.mode === "inventory" || state.mode === "table") {
     tooltipLabel.textContent = state.mode === "table" ? "Crafting table online. Combine materials in the 3x3 grid." : "Inventory open. Use the 2x2 pack grid for early recipes.";
+  } else if (state.mode === "chest") {
+    tooltipLabel.textContent = "Chest open. Move loot between cache and pack.";
+  } else if (currentMobTarget) {
+    tooltipLabel.textContent = `Left click attack ${currentMobTarget.def.label} | ${getSelectedToolDefinition()?.toolType === "sword" ? "Sword" : "Tool"} damage ${getSelectedAttackDamage().toFixed(1)}`;
   } else if (currentTarget?.blockId === BLOCK.CRAFTING_TABLE) {
     tooltipLabel.textContent = "Right click to use Crafting Table | Left click to break | E inventory";
+  } else if (currentTarget?.blockId === BLOCK.CHEST) {
+    tooltipLabel.textContent = "Right click to open Chest | Left click to break | E inventory";
   } else if (currentTarget) {
     const progress = mining.key ? Math.round(mining.progress * 100) : 0;
     tooltipLabel.textContent = mining.key
@@ -1369,10 +1783,10 @@ function updateViewModel(dt) {
   state.handSwing = Math.max(0, state.handSwing - dt * 3.2);
   const swing = Math.sin(state.handSwing * Math.PI);
   viewModel.visible = state.mode === "playing";
-  viewModel.position.set(0.72 + bobX + swing * 0.12, -0.62 - bobY - swing * 0.08, -1.15 + swing * 0.08);
-  viewModel.rotation.set(-0.5 + swing * 0.35, -0.34 - swing * 0.55, -0.16 + swing * 0.18);
+  viewModel.position.set(0.64 + bobX + swing * 0.08, -0.48 - bobY - swing * 0.05, -1.08 + swing * 0.05);
+  viewModel.rotation.set(-0.36 + swing * 0.22, -0.24 - swing * 0.32, -0.08 + swing * 0.12);
   if (heldMesh) {
-    heldMesh.rotation.z = 0.18 + swing * 0.55;
+    heldMesh.rotation.z = (heldMesh.userData.baseRotationZ ?? 0.12) + swing * 0.18;
   }
 }
 
@@ -1388,8 +1802,14 @@ function updateSaveTimer(dt) {
 
 function fixedUpdate(dt) {
   updateLighting(dt);
+  updateTorchLights();
   if (state.mode === "playing") {
     updatePlayer(dt);
+    mobSystem.update(dt, {
+      player: { position: player.position, applyDamage },
+      daylight: state.daylight,
+      spawnDrop,
+    });
     updateInteraction(dt);
   }
   updateDrops(dt);
@@ -1414,7 +1834,7 @@ function toggleFullscreen() {
 }
 
 function onResize() {
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -1471,7 +1891,7 @@ window.addEventListener("keydown", (event) => {
     }
     return;
   }
-  if (state.mode === "inventory" || state.mode === "table") {
+  if (state.mode === "inventory" || state.mode === "table" || state.mode === "chest") {
     if ((event.code === "KeyE" || event.code === "Escape") && !event.repeat) {
       event.preventDefault();
       closeInventory();
@@ -1612,29 +2032,48 @@ window.render_game_to_text = () => {
       health: Number(player.health.toFixed(1)),
       stamina: Number(player.stamina.toFixed(1)),
       oxygen: Number(player.oxygen.toFixed(1)),
+      fov: Number(camera.fov.toFixed(1)),
     },
     selected: getSelectedStack() ? {
       item: getItemName(getSelectedStack().itemId),
       count: getSelectedStack().count,
       durability: getSelectedStack().durability,
     } : null,
-    target: currentTarget ? {
-      x: currentTarget.x,
-      y: currentTarget.y,
-      z: currentTarget.z,
-      name: BLOCK_TYPES[currentTarget.blockId].name,
-      face: currentTarget.normal,
-      breakProgress: Number(mining.progress.toFixed(2)),
-    } : null,
+    target: currentMobTarget
+      ? {
+          type: "mob",
+          name: currentMobTarget.def.label,
+          x: Number(currentMobTarget.position.x.toFixed(2)),
+          y: Number(currentMobTarget.position.y.toFixed(2)),
+          z: Number(currentMobTarget.position.z.toFixed(2)),
+          health: Number(currentMobTarget.health.toFixed(1)),
+        }
+      : currentTarget
+        ? {
+            type: "block",
+            x: currentTarget.x,
+            y: currentTarget.y,
+            z: currentTarget.z,
+            name: BLOCK_TYPES[currentTarget.blockId].name,
+            face: currentTarget.normal,
+            breakProgress: Number(mining.progress.toFixed(2)),
+          }
+        : null,
     world: {
       seed: WORLD_SEED,
       time: getTimeLabel(state.timeOfDay),
       pointerLocked: document.pointerLockElement === canvas,
       dirtyBlocks: Object.keys(world.serializeChanges()).length,
       drops: state.drops.map((drop) => ({ item: getItemName(drop.stack.itemId), count: drop.stack.count })),
+      mobs: mobSystem.getVisibleState(player.position),
     },
-    inventoryOpen: state.mode === "inventory" || state.mode === "table",
+    inventoryOpen: state.mode === "inventory" || state.mode === "table" || state.mode === "chest",
     craftStation: state.mode === "table" ? "crafting_table" : state.mode === "inventory" ? "inventory" : null,
+    chestOpen: state.mode === "chest" ? {
+      key: state.openChestKey,
+      title: state.chestTitle,
+      slots: (getOpenChestSlots() ?? []).filter(Boolean).map((stack) => ({ item: getItemName(stack.itemId), count: stack.count })),
+    } : null,
     craftResult: recipe ? { item: getItemName(recipe.output.itemId), count: recipe.output.count } : null,
     cursor: state.cursorStack ? { item: getItemName(state.cursorStack.itemId), count: state.cursorStack.count } : null,
     hotbar: Array.from({ length: HOTBAR_SIZE }, (_, index) => {
@@ -1647,6 +2086,31 @@ window.render_game_to_text = () => {
   return JSON.stringify(payload);
 };
 
+window.__brantcraftDebug = {
+  setTimeOfDay(value) {
+    state.timeOfDay = wrap(value, 1);
+  },
+  getMobs() {
+    return mobSystem.getVisibleState(player.position);
+  },
+  getPresetChests() {
+    return world.getPresetChests?.() ?? [];
+  },
+  teleportTo(x, y, z) {
+    player.position.set(x, y, z);
+    player.velocity.set(0, 0, 0);
+  },
+  setRotation(yaw, pitch = player.pitch) {
+    player.yaw = yaw;
+    player.pitch = pitch;
+  },
+  openChestAt(x, y, z) {
+    const key = chestKey(x, y, z);
+    const isPreset = (world.getPresetChests?.() ?? []).some((entry) => chestKey(entry.x, entry.y, entry.z) === key);
+    openChest(key, isPreset ? "Surprise Chest" : "Oak Chest");
+  },
+};
+
 window.advanceTime = (milliseconds) => {
   const steps = Math.max(1, Math.round(milliseconds / (FIXED_TIME_STEP * 1000)));
   for (let index = 0; index < steps; index += 1) {
@@ -1655,3 +2119,46 @@ window.advanceTime = (milliseconds) => {
   renderFrame();
   lastTime = performance.now();
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

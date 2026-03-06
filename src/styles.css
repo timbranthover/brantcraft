@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   color-scheme: dark;
   --ink: #d4ffc8;
   --ink-dim: rgba(174, 227, 166, 0.84);
@@ -424,6 +424,18 @@ button:hover {
   font-size: 0.78rem;
 }
 
+#craft-notes {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 18px;
+  color: var(--ink-dim);
+  font-size: 0.76rem;
+}
+
+#craft-notes p {
+  margin: 0;
+}
+
 .craft-layout {
   flex-wrap: wrap;
   margin-bottom: 18px;
@@ -466,8 +478,16 @@ button:hover {
   grid-template-columns: repeat(9, 54px);
 }
 
+.chest-grid {
+  grid-template-columns: repeat(9, 54px);
+}
+
 .hotbar-grid {
   grid-template-columns: repeat(9, 54px);
+}
+
+.hidden-block {
+  display: none;
 }
 
 .inventory-block + .inventory-block {
@@ -485,6 +505,16 @@ button:hover {
   padding: 8px 10px;
   color: var(--ink-dim);
   background: rgba(11, 18, 12, 0.7);
+  width: 100%;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+}
+
+.recipe-chip span {
+  color: rgba(188, 226, 178, 0.7);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
 }
 
 .recipe-chip.ready {
@@ -543,3 +573,7 @@ button:hover {
     grid-template-columns: repeat(3, 48px);
   }
 }
+
+
+
+

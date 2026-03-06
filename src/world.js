@@ -184,6 +184,7 @@ export class VoxelWorld {
     this.columnHeights = new Int16Array(WORLD_WIDTH * WORLD_DEPTH);
     this.chunkMeshes = new Map();
     this.modifications = new Map();
+    this.surpriseChests = [];
 
     this.generateTerrain();
     this.baseData = this.data.slice();
@@ -309,6 +310,8 @@ export class VoxelWorld {
         }
       }
     }
+
+    this.placeSurpriseChests();
   }
 
   sampleClimate(x, z) {
@@ -490,14 +493,57 @@ export class VoxelWorld {
         continue;
       }
       const mesh = new THREE.Mesh(geometry, this.materials[layer]);
-      mesh.frustumCulled = false;
+      mesh.frustumCulled = true;
       chunkGroup.add(mesh);
     }
 
+    chunkGroup.matrixAutoUpdate = false;
+    chunkGroup.updateMatrix();
     this.chunkMeshes.set(key, chunkGroup);
     this.group.add(chunkGroup);
   }
 
+
+  placeSurpriseChests() {
+    const candidates = [
+      { x: -18, z: 14 },
+      { x: 21, z: -17 },
+      { x: -26, z: -21 },
+    ];
+
+    candidates.forEach((candidate, index) => {
+      const x = clamp(candidate.x, WORLD_MIN_X + 2, WORLD_MAX_X - 2);
+      const z = clamp(candidate.z, WORLD_MIN_Z + 2, WORLD_MAX_Z - 2);
+      const groundY = this.getTopSolidBlockY(x, z);
+      if (groundY < 1) {
+        return;
+      }
+      const chestY = groundY + 1;
+      if (this.getBlock(x, chestY, z) !== BLOCK.AIR) {
+        return;
+      }
+      this.setBaseBlock(x, chestY, z, BLOCK.CHEST);
+      this.surpriseChests.push({ index, x, y: chestY, z });
+      if (this.getBlock(x, groundY, z) === BLOCK.GRASS && this.getBlock(x, chestY + 1, z) === BLOCK.AIR) {
+        if (this.isInside(x + 1, chestY, z) && this.getBlock(x + 1, chestY, z) === BLOCK.AIR) {
+          this.setBaseBlock(x + 1, chestY, z, BLOCK.TORCH);
+        }
+      }
+    });
+  }
+  getTopSolidBlockY(x, z) {
+    if (x < WORLD_MIN_X || x > WORLD_MAX_X || z < WORLD_MIN_Z || z > WORLD_MAX_Z) {
+      return 0;
+    }
+    for (let y = WORLD_HEIGHT - 1; y >= 0; y -= 1) {
+      const blockId = this.getBlock(x, y, z);
+      if (blockId === BLOCK.AIR || blockId === BLOCK.WATER || blockId === BLOCK.LEAVES) {
+        continue;
+      }
+      return y;
+    }
+    return 0;
+  }
   findSpawnPoint() {
     const candidates = [
       [0, 0],
@@ -519,6 +565,42 @@ export class VoxelWorld {
     return { x: 0.5, y: WATER_LEVEL + 4, z: 0.5 };
   }
 
+
+  getPresetChests() {
+    return this.surpriseChests.map((entry) => ({ ...entry }));
+  }
+
+  isLightSourceNearby(x, y, z, radius = 8) {
+    for (let ox = -radius; ox <= radius; ox += 1) {
+      for (let oy = -2; oy <= 2; oy += 1) {
+        for (let oz = -radius; oz <= radius; oz += 1) {
+          const blockId = this.getBlock(x + ox, y + oy, z + oz);
+          if (blockId === BLOCK.TORCH) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  getNearbyTorches(center, radius = 14) {
+    const lights = [];
+    const cx = Math.floor(center.x);
+    const cy = Math.floor(center.y);
+    const cz = Math.floor(center.z);
+    for (let x = cx - radius; x <= cx + radius; x += 1) {
+      for (let y = Math.max(0, cy - 4); y <= Math.min(WORLD_HEIGHT - 1, cy + 6); y += 1) {
+        for (let z = cz - radius; z <= cz + radius; z += 1) {
+          if (this.getBlock(x, y, z) !== BLOCK.TORCH) {
+            continue;
+          }
+          lights.push({ x: x + 0.5, y: y + 0.72, z: z + 0.5, distance: Math.hypot(x + 0.5 - center.x, y + 0.72 - center.y, z + 0.5 - center.z) });
+        }
+      }
+    }
+    return lights.sort((a, b) => a.distance - b.distance).slice(0, 8);
+  }
   raycast(origin, direction, maxDistance) {
     const stepX = Math.sign(direction.x);
     const stepY = Math.sign(direction.y);
@@ -623,4 +705,6 @@ export class VoxelWorld {
     return blocks.sort((a, b) => a.distance - b.distance).slice(0, 12);
   }
 }
+
+
 

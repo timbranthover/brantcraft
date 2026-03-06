@@ -1,4 +1,4 @@
-﻿import * as THREE from "three";
+import * as THREE from "three";
 
 const TILE_SIZE = 16;
 const GRID_SIZE = 5;
@@ -21,6 +21,10 @@ const TILE_NAMES = [
   "craftingTop",
   "craftingSide",
   "craftingFront",
+  "chestTop",
+  "chestSide",
+  "chestFront",
+  "torch",
   "terminalFrame",
   "placeholder",
 ];
@@ -224,6 +228,40 @@ function drawCraftingFront(ctx) {
   ctx.fillRect(4, 10, 8, 3);
 }
 
+function drawChestTop(ctx) {
+  drawNoiseTile(ctx, ["#98663b", "#a97442", "#c0894e"], 60.9, true);
+  ctx.fillStyle = "rgba(82, 46, 21, 0.7)";
+  ctx.fillRect(0, 7, TILE_SIZE, 2);
+  ctx.fillRect(2, 2, 12, 2);
+}
+
+function drawChestSide(ctx) {
+  drawNoiseTile(ctx, ["#7e532f", "#8f6037", "#a56f42"], 63.1, true);
+  ctx.fillStyle = "rgba(62, 36, 15, 0.68)";
+  ctx.fillRect(0, 4, TILE_SIZE, 1);
+  ctx.fillRect(0, 11, TILE_SIZE, 1);
+  ctx.fillStyle = "rgba(202, 162, 90, 0.48)";
+  ctx.fillRect(1, 5, 14, 6);
+}
+
+function drawChestFront(ctx) {
+  drawChestSide(ctx);
+  ctx.fillStyle = "#d8bf6f";
+  ctx.fillRect(7, 6, 2, 4);
+  ctx.fillStyle = "#5d4218";
+  ctx.fillRect(7, 7, 2, 2);
+}
+
+function drawTorch(ctx) {
+  fill(ctx, "rgba(0,0,0,0)");
+  ctx.fillStyle = "#8f6432";
+  ctx.fillRect(7, 5, 2, 9);
+  ctx.fillStyle = "#ffb247";
+  ctx.fillRect(5, 1, 6, 6);
+  ctx.fillStyle = "#ffd98c";
+  ctx.fillRect(6, 2, 4, 3);
+}
+
 function drawTerminalFrame(ctx) {
   fill(ctx, "#0c130e");
   ctx.strokeStyle = "#86d089";
@@ -254,6 +292,10 @@ const painters = {
   craftingTop: drawCraftingTop,
   craftingSide: drawCraftingSide,
   craftingFront: drawCraftingFront,
+  chestTop: drawChestTop,
+  chestSide: drawChestSide,
+  chestFront: drawChestFront,
+  torch: drawTorch,
   terminalFrame: drawTerminalFrame,
   placeholder: (ctx) => {
     fill(ctx, "#ff00ff");
@@ -266,7 +308,7 @@ const painters = {
 export function createAtlasTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = GRID_SIZE * TILE_SIZE;
-  canvas.height = GRID_SIZE * TILE_SIZE;
+  canvas.height = Math.ceil(TILE_NAMES.length / GRID_SIZE) * TILE_SIZE;
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
 
@@ -289,10 +331,11 @@ export function createAtlasTexture() {
 
 export function getTileUV(tileName) {
   const tile = layout[tileName] ?? layout.placeholder;
+  const rows = Math.ceil(TILE_NAMES.length / GRID_SIZE);
   const u0 = tile.x / GRID_SIZE;
-  const v0 = 1 - (tile.y + 1) / GRID_SIZE;
+  const v0 = 1 - (tile.y + 1) / rows;
   const u1 = (tile.x + 1) / GRID_SIZE;
-  const v1 = 1 - tile.y / GRID_SIZE;
+  const v1 = 1 - tile.y / rows;
   const inset = 0.0015;
   return [
     [u0 + inset, v0 + inset],
