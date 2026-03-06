@@ -1,0 +1,21 @@
+Original prompt: Make a minefraft clone in HTML using Three JS, be as detailed as possible, it should be the closest clone you can make. Use[$playwright-interactive](C:\Users\mpbra\.codex\skills\playwright-interactive\SKILL.md) [$develop-web-game](C:\Users\mpbra\.codex\skills\develop-web-game\SKILL.md)
+
+- 2026-03-05: Initialized empty workspace as a vanilla Vite-style app with Three.js and Playwright dependencies planned.
+- TODO: Implement voxel world generation, chunk meshing, player controller, mining/placing, HUD, save/load, and deterministic test hooks.
+- TODO: Run the develop-web-game Playwright client against the local dev server and inspect screenshots plus `render_game_to_text`.
+- 2026-03-05: Added initial playable feature set: seeded voxel terrain, chunk meshing, mining/placing, first-person movement, hotbar, day/night lighting, save/load, and required test hooks.
+- 2026-03-05: Adjusted runtime for automated QA: arrow keys mirror WASD and gameplay can run if pointer lock is unavailable in headless Chromium.
+- 2026-03-05: Copied the skill Playwright client into the workspace unchanged so Node can resolve the local playwright package during QA.
+- 2026-03-05: Added a local Playwright diagnostic script after the skill client hung without artifacts, to isolate render/runtime issues versus client-process issues.
+- 2026-03-05: Tuned the startup view for QA and playability: default daytime lighting, more scenic yaw, and a steeper initial pitch so the crosshair lands on terrain.
+- 2026-03-05: Updated the diagnostic browser run to use window.advanceTime(...) so headless QA reflects actual simulated frames instead of throttled real-time animation.
+- 2026-03-05: Wrote the Playwright action burst to a JSON file to avoid PowerShell/cmd escaping issues during the required skill-client run.
+- 2026-03-05: Verified with build + Playwright artifacts. Stepped diagnostic confirmed rendering and mining; skill-client artifacts covered movement/jump and a mine-then-place burst with no console errors emitted.
+- 2026-03-05: Fixed the core movement bug: forward motion now matches the camera, so W/Up moves forward instead of backward.
+- 2026-03-05: Added a bigger survival loop: finite inventory counts, crafting overlay, health/stamina/oxygen vitals, fall and drowning damage with respawn, procedural audio, and corrected forward movement.
+- 2026-03-05: Fixed the HUD grid after the vitals row was added, so health/stamina/oxygen sit as compact meters instead of stretching down the screen.
+- 2026-03-05: Hardened the control layer: browser pointer-lock/fullscreen exits now use a safe wrapper, menu/paused/crafting states no longer capture movement input, crafting closes on Esc, pause resumes on Enter, and world mouse actions ignore non-canvas clicks when unlocked.
+- 2026-03-05: Verified the control fix set with `npm run build`, a fresh skill-client run in `output/web-game-controls`, and an expanded `scripts/upgrade_diagnose.mjs` pass that confirmed: held menu movement does not leak into play, W/Up moves forward, crafting opens with E and closes with Esc, and no console/page errors were emitted.
+- 2026-03-05: Rebuilt the core loop around item stacks instead of raw material counters. Added slot-based 9-slot hotbar + 27-slot pack inventory, dropped item entities with pickup, inventory open on `E`, placeable crafting table blocks, 2x2 inventory crafting, 3x3 crafting table mode, wooden/stone tool recipes, tool durability, preferred-tool mining speeds, and correct no-drop behavior for tool-gated stone blocks.
+- 2026-03-05: Reworked the HUD toward Minecraft layout with a CRT-terminal spin: centered hotbar, heart/stamina/oxygen bands, terminal readout strip, target/use tooltip bar, and a first-person arm + held-item viewmodel.
+- 2026-03-05: Verified with `npm run build`, a fresh skill-client run in `output/web-game-phase2`, and a seeded Playwright diagnostic in `output/upgrade-diagnose` confirming: empty-start HUD renders cleanly, a wooden axe mines an oak log and loses durability, inventory opens in 2x2 mode with recipe hints, and placing a crafting table consumes the hotbar item with no console/page errors.

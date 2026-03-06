@@ -1,0 +1,119 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>BrantCraft</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game"></canvas>
+      <div id="damage-flash" aria-hidden="true"></div>
+      <div id="hud">
+        <div id="terminal-readout">
+          <span id="coords-readout">X:+0.0 Y:+0.0 Z:+0.0</span>
+          <span id="seed-readout">SEED 84621</span>
+          <span id="time-readout">DAY</span>
+          <span id="held-readout">HAND EMPTY</span>
+        </div>
+        <div id="crosshair" aria-hidden="true"></div>
+        <div id="status-bands">
+          <div id="hearts-band" class="icon-band"></div>
+          <div id="stamina-band" class="icon-band"></div>
+          <div id="oxygen-band" class="icon-band"></div>
+        </div>
+        <div id="hotbar"></div>
+        <div id="bottom-strip">
+          <div id="target-readout">TARGET NONE</div>
+          <div id="tooltip">Click ENTER WORLD, then punch a tree.</div>
+          <div id="save-indicator">SYNCED</div>
+        </div>
+      </div>
+      <div id="inventory-panel" class="overlay inventory-shell">
+        <div class="inventory-frame">
+          <div class="inventory-header">
+            <div>
+              <p class="eyebrow">FIELD TERMINAL</p>
+              <h2 id="inventory-title">Inventory</h2>
+            </div>
+            <button id="close-inventory-btn" type="button">RETURN</button>
+          </div>
+          <div class="inventory-meta">
+            <span id="inventory-mode-readout">2x2 GRID</span>
+            <span id="recipe-readout">RECIPE: NONE</span>
+          </div>
+          <div class="craft-layout">
+            <section class="craft-panel">
+              <h3>Craft Grid</h3>
+              <div id="craft-grid" class="slot-grid craft-grid"></div>
+            </section>
+            <section class="craft-panel result-panel">
+              <h3>Output</h3>
+              <div id="craft-result" class="slot-grid result-grid"></div>
+            </section>
+            <section class="craft-panel recipe-panel">
+              <h3>Known Recipes</h3>
+              <div id="recipe-list"></div>
+            </section>
+          </div>
+          <section class="inventory-block">
+            <h3>Pack</h3>
+            <div id="inventory-storage" class="slot-grid storage-grid"></div>
+          </section>
+          <section class="inventory-block">
+            <h3>Hotbar</h3>
+            <div id="inventory-hotbar" class="slot-grid hotbar-grid"></div>
+          </section>
+        </div>
+      </div>
+      <div id="menu" class="overlay visible">
+        <div class="panel">
+          <p class="eyebrow">Three.js survival build</p>
+          <h1>BrantCraft</h1>
+          <p class="body-copy">
+            Punch trees, build a 2x2 inventory recipe, craft a table, then graduate into real tools.
+            This pass pushes the sandbox closer to Minecraft while keeping the CRT-terminal tone.
+          </p>
+          <div class="control-grid">
+            <span>Move</span><span>W A S D or Arrows</span>
+            <span>Look</span><span>Mouse</span>
+            <span>Jump</span><span>Space</span>
+            <span>Inventory</span><span>E</span>
+            <span>Use / Place</span><span>Right Click</span>
+            <span>Mine</span><span>Hold Left Click</span>
+            <span>Hotbar</span><span>1-9 or Wheel</span>
+            <span>Pause</span><span>Esc</span>
+            <span>Fullscreen</span><span>F</span>
+          </div>
+          <button id="start-btn" type="button">Enter World</button>
+        </div>
+      </div>
+      <div id="pause-panel" class="overlay">
+        <div class="panel small">
+          <p class="eyebrow">Cursor released</p>
+          <h2>Paused</h2>
+          <p class="body-copy">
+            Resume to re-lock the cursor. Inventory lives on E, and crafting tables open by using them in-world.
+          </p>
+          <button id="resume-btn" type="button">Resume</button>
+        </div>
+      </div>
+      <div id="death-panel" class="overlay">
+        <div class="panel small">
+          <p class="eyebrow">Signal Lost</p>
+          <h2>Respawn</h2>
+          <p id="death-copy" class="body-copy">
+            You collapsed. Respawn at the last safe spot.
+          </p>
+          <button id="respawn-btn" type="button">Respawn</button>
+        </div>
+      </div>
+      <div id="cursor-stack" aria-hidden="true"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
