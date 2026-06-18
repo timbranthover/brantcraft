@@ -1878,8 +1878,8 @@ document.addEventListener("mousemove", (event) => {
   if (document.pointerLockElement !== canvas) {
     return;
   }
-  player.yaw -= event.movementX * 0.0025;
-  player.pitch = clamp(player.pitch - event.movementY * 0.0022, -Math.PI / 2 + 0.03, Math.PI / 2 - 0.03);
+  player.yaw -= event.movementX * 0.0012;
+  player.pitch = clamp(player.pitch - event.movementY * 0.0011, -Math.PI / 2 + 0.03, Math.PI / 2 - 0.03);
 });
 
 window.addEventListener("keydown", (event) => {
