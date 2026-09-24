@@ -94,11 +94,11 @@ class MeshBuilder{
   }
 }
 
-const MAT={GRASS:1,STUCCO:2,STONE:3,WOOD:4,SHUTTER:5,TILE:6,METAL:7,FABRIC:8,DARK:9,LEAF:10,TRUNK:11,SKIN:12,WHITE:13,WATER:14,GLASS:15};
+const MAT={GRASS:1,STUCCO:2,STONE:3,WOOD:4,SHUTTER:5,TILE:6,METAL:7,FABRIC:8,DARK:9,LEAF:10,TRUNK:11,SKIN:12,WHITE:13,WATER:14,GLASS:15,POOL:16};
 const opaque=new MeshBuilder();
 
 opaque.box(0,-0.18,2,38,.32,30,MAT.GRASS);
-opaque.box(9.0,-0.04,8.45,18.8,.14,8.1,MAT.STONE);
+opaque.box(9.0,-0.19,8.45,18.0,.18,7.35,MAT.POOL);
 opaque.box(9.0,-0.02,4.55,18.8,.22,.42,MAT.STONE);
 opaque.box(9.0,-0.02,12.35,18.8,.22,.42,MAT.STONE);
 opaque.box(-0.2,-0.02,8.45,.42,.22,8.2,MAT.STONE);
@@ -226,6 +226,7 @@ fn matBase(id:f32,p:vec3<f32>,uv:vec2<f32>)->vec4<f32>{
  if(id<12.5){return vec4<f32>(vec3<f32>(.42,.24,.15)*(0.92+.12*n),0.7);}
  if(id<13.5){return vec4<f32>(vec3<f32>(.82,.82,.79)*(0.9+.15*n),0.76);}
  if(id<15.5){return vec4<f32>(vec3<f32>(.045,.085,.10),0.1);}
+ if(id<16.5){let gx=step(.94,fract(uv.x*5.0));let gy=step(.94,fract(uv.y*5.0));let grout=clamp(gx+gy,0.0,1.0);return vec4<f32>(mix(vec3<f32>(.10,.43,.58)*(0.82+.22*n),vec3<f32>(.72,.79,.78),grout*.55),0.7);}
  return vec4<f32>(vec3<f32>(.5),.8);
 }
 `;
@@ -260,7 +261,7 @@ struct Globals{viewProj:mat4x4<f32>,lightVP:mat4x4<f32>,camTime:vec4<f32>,sun:ve
   const waterBG=device.createBindGroup({layout:waterPipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:uniform}},{binding:1,resource:shadowTex.createView()},{binding:2,resource:shadowSampler}]});
   progress.style.width='74%';
 
-  const cam={p:[-13.8,1.62,10.8],yaw:0.76,pitch:-0.11,vy:0,g:true};
+  const cam={p:[-7.8,1.66,13.6],yaw:2.67,pitch:0.015,vy:0,g:true};
   const keys=new Set();addEventListener('keydown',e=>keys.add(e.code));addEventListener('keyup',e=>keys.delete(e.code));canvas.addEventListener('click',()=>canvas.requestPointerLock?.());document.addEventListener('mousemove',e=>{if(document.pointerLockElement===canvas){cam.yaw-=e.movementX*.00165;cam.pitch=clamp(cam.pitch-e.movementY*.00145,-1.35,1.35)}});
   let mt=[0,0],run=false,sid=null,lid=null,ll=[0,0];const stick=document.querySelector('#moveStick'),nub=stick.querySelector('.nub');function sm(x,y){const r=stick.getBoundingClientRect();let dx=x-r.left-59,dy=y-r.top-59,l=Math.hypot(dx,dy);if(l>42){dx*=42/l;dy*=42/l}nub.style.transform=`translate(${dx}px,${dy}px)`;mt=[dx/42,dy/42]}
   stick.addEventListener('pointerdown',e=>{sid=e.pointerId;stick.setPointerCapture(sid);sm(e.clientX,e.clientY)});stick.addEventListener('pointermove',e=>{if(e.pointerId===sid)sm(e.clientX,e.clientY)});stick.addEventListener('pointerup',e=>{if(e.pointerId===sid){sid=null;mt=[0,0];nub.style.transform=''}});
