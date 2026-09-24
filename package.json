@@ -1,5 +1,5 @@
 {
-  "name": "minecraft-clone",
+  "name": "cala-webgpu-realtime",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,10 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "three": "^0.181.1"
+    "three": "^0.186.0"
   },
   "devDependencies": {
-    "playwright": "^1.56.1",
     "vite": "^7.2.0"
   }
 }
